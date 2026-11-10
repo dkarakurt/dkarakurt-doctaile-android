@@ -61,6 +61,33 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
 .addbox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--brass-soft);border:1px dashed var(--brass);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px}
 .addbox b{color:#f6e2bd}
 .addbox select{background:var(--ink);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-family:inherit;font-size:13px}
+.userbox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.who{font-size:12px;color:var(--muted);max-width:26ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who b{color:var(--text);font-weight:600}
+.btn.fav{border-color:var(--brass);color:#f6e2bd}
+.btn.fav[aria-pressed="true"]{background:var(--brass);color:#1b140a}
+.progress{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.favlist{display:grid;gap:8px}
+.favitem{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;text-align:left;color:var(--text);font:inherit;width:100%}
+.favitem:hover{border-color:var(--brass)}
+.favitem svg{width:56px;height:auto;display:block}
+.favitem .fn{font-family:var(--display);font-size:19px;line-height:1.2}
+.favitem .ft{font-size:12px;color:var(--muted)}
+.favrow{display:flex;gap:6px;align-items:center}
+.favrow .rm{border:1px solid var(--line);background:var(--ink);color:var(--muted);border-radius:999px;width:34px;height:34px;cursor:pointer;font-size:16px;flex:0 0 auto}
+.favrow .rm:hover{color:#f08c7a;border-color:#7a3a30}
+.login{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 50% 30%,#223044 0%,var(--ink) 65%);display:flex;align-items:center;justify-content:center;padding:24px 18px;overflow-y:auto}
+.login .card{width:100%;max-width:400px;display:grid;gap:14px;text-align:center}
+.login .logo{font-size:56px}
+.login .glassmini{width:120px;margin:0 auto}
+.login p{margin:0;color:var(--muted)}
+.login form{display:grid;gap:10px;text-align:left}
+.login label{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--brass);font-weight:700}
+.login input{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:13px 14px;font-size:16px;font-family:inherit}
+.login .err{color:#f08c7a;font-size:13px;min-height:18px}
+.login .known{display:grid;gap:6px;text-align:left}
+.login .known h3{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin:6px 0 0;font-weight:700}
+.login .fine{font-size:12px}
 .alth{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--brass);margin:0 0 6px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);background:var(--ink);color:var(--text);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
@@ -178,9 +205,26 @@ html.book.vert .main > .panel:first-child{border-radius:0 0 14px 14px;border-rig
 .loading.shaking .glassbox{animation:shakeit .5s ease-in-out infinite}
 @keyframes shakeit{0%,100%{transform:rotate(0)}25%{transform:rotate(-4deg) translateX(-3px)}75%{transform:rotate(4deg) translateX(3px)}}
 @media (prefers-reduced-motion:reduce){.loading.shaking .glassbox{animation:none}html.phone .stage{transition:none}}
+html.phone .who{flex:0 0 auto;max-width:62vw;align-self:center}
+html.phone .search,html.phone .login input{font-size:16px}
 </style>
 </head>
 <body>
+<div class="login hidden" id="login" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="card">
+    <div class="glassmini" id="loginGlass"></div>
+    <h1 class="logo" id="loginTitle">doc<em>taile</em></h1>
+    <p>E-postanla giriş yap; seçtiğin malzemeler ve favori kokteyllerin bu cihazda senin adına saklansın.</p>
+    <form id="loginForm" novalidate>
+      <label for="email">E-posta</label>
+      <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="ornek@mail.com" required>
+      <div class="err" id="loginErr" role="alert"></div>
+      <button class="btn primary" type="submit">Giriş yap</button>
+    </form>
+    <div class="known" id="known"></div>
+    <p class="fine">Şifre gerekmez. Bilgiler yalnızca bu cihazda saklanır, hiçbir yere gönderilmez; uygulama silinirse kaybolur.</p>
+  </div>
+</div>
 <div class="wrap">
   <header>
     <div>
@@ -188,8 +232,11 @@ html.book.vert .main > .panel:first-child{border-radius:0 0 14px 14px;border-rig
       <p class="tag">Elindeki şişeleri seç, Make'e bas. doctaile o malzemelerle gerçekten yapılabilecek bir kokteyl seçer, ölçülerini ve yapılışını verir. <span id="tagcount"></span></p>
     </div>
     <div class="hdr-actions">
-      <button class="btn" id="preset" type="button">Örnek bar: Black Label + vermutlar</button>
+      <span class="who" id="who"></span>
+      <button class="btn fav" id="favbtn" type="button">Favorilerim (0)</button>
+      <button class="btn" id="preset" type="button">Örnek bar</button>
       <button class="btn" id="clear" type="button">Seçimi temizle</button>
+      <button class="btn" id="logout" type="button">Çıkış</button>
     </div>
   </header>
 
@@ -561,11 +608,100 @@ const openCats = new Set();
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const PRESET = ["scotch","cola","coffee","soda","coollime","bianco","rosso","mojitomix","jager","sugar"];
-function save(){ try{ localStorage.setItem("doctaile-sel", JSON.stringify([...sel])); localStorage.setItem("doctaile-mock", $("mock").checked?"1":"0"); localStorage.setItem("doctaile-custom", JSON.stringify(custom)); }catch(e){} }
-function load(){
-  try{ const c = JSON.parse(localStorage.getItem("doctaile-custom")||"[]"); if(Array.isArray(c)) custom = c.filter(x=>x && x.id && x.name && ROLES[x.role]); }catch(e){}
+// ---------- Profiller (bu cihazda, e-posta ile) ----------
+const STORE="doctaile-profiles", CUR="doctaile-current";
+let profiles = {}, me = null, lastProgress = null;
+try{ profiles = JSON.parse(localStorage.getItem(STORE)||"{}") || {}; }catch(e){ profiles = {}; }
+const prof = () => profiles[me];
+function persist(){ try{ localStorage.setItem(STORE, JSON.stringify(profiles)); localStorage.setItem(CUR, me||""); }catch(e){} }
+function save(){
+  if(!me) return;
+  const p = prof(); p.sel=[...sel]; p.mock=$("mock").checked; p.custom=custom; p.open=[...openCats]; p.last=Date.now();
+  persist();
+}
+function newProfile(){ return {sel:[], custom:[], fav:[], seen:{}, open:[], mock:false, created:Date.now(), last:Date.now()}; }
+function loadProfile(email){
+  me = email;
+  if(!profiles[me]) profiles[me] = newProfile();   // ilk giriş: hiçbir malzeme seçili değil, tüm gruplar kapalı
+  const p = prof(); p.fav = p.fav||[]; p.seen = p.seen||{}; p.open = p.open||[];
+  custom = (p.custom||[]).filter(x=>x && x.id && x.name && ROLES[x.role]);
   applyCustom();
-  try{ const s = JSON.parse(localStorage.getItem("doctaile-sel")||"null"); if(Array.isArray(s)) s.forEach(k=>NAME[k]&&sel.add(k)); else PRESET.forEach(k=>sel.add(k)); $("mock").checked = localStorage.getItem("doctaile-mock")==="1"; }catch(e){ PRESET.forEach(k=>sel.add(k)); }
+  sel.clear(); (p.sel||[]).forEach(k=>NAME[k]&&sel.add(k));
+  $("mock").checked = !!p.mock;
+  openCats.clear(); p.open.forEach(c=>openCats.add(c));
+  $("q").value = "";
+  ranked = {full:[], one:[]}; current = null;
+  $("loading").classList.add("hidden"); $("result").classList.add("hidden"); $("empty").classList.remove("hidden");
+  renderCats(); showEmpty(); renderUser(); persist();
+  $("login").classList.add("hidden");
+}
+function renderUser(){
+  $("who").innerHTML = me ? `Giriş: <b>${esc(me)}</b>` : "";
+  $("favbtn").textContent = `Favorilerim (${me ? prof().fav.length : 0})`;
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function showLogin(){
+  me = null; persist();
+  $("loginGlass").innerHTML = glassSVG({glass:"coupe",color:"#8e3b1c",name:"doctaile",garnish:["","peel"]},0.92,{still:true});
+  const known = Object.keys(profiles).sort((a,b)=>(profiles[b].last||0)-(profiles[a].last||0));
+  $("known").innerHTML = known.length ? `<h3>Bu cihazdaki profiller</h3><div class="chips">${known.map(e=>`<button type="button" class="chip" data-email="${esc(e)}">${esc(e)}</button>`).join("")}</div>` : "";
+  $("loginErr").textContent = ""; $("email").value = "";
+  $("login").classList.remove("hidden");
+  setTimeout(()=>{ try{ $("email").focus(); }catch(e){} }, 50);
+}
+$("loginForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  const v = $("email").value.trim().toLowerCase();
+  if(!EMAIL_RE.test(v)){ $("loginErr").textContent = "Geçerli bir e-posta adresi yaz (ör. ad@mail.com)."; return; }
+  loadProfile(v);
+});
+$("known").addEventListener("click", e=>{ const b=e.target.closest("[data-email]"); if(b) loadProfile(b.dataset.email); });
+$("logout").addEventListener("click", ()=>{ save(); showLogin(); });
+
+// ---------- Favoriler ----------
+const favKey = r => r.id.startsWith("imp-") ? "imp:"+r.name : r.id;
+const isFav = r => !!(me && prof().fav.some(f=>f.key===favKey(r)));
+function toggleFav(r){
+  const p = prof(), k = favKey(r), i = p.fav.findIndex(f=>f.key===k);
+  if(i>=0) p.fav.splice(i,1);
+  else p.fav.unshift({key:k, id:r.id, name:r.name, taste:r.taste, snap: r.id.startsWith("imp-") ? r : null, at:Date.now()});
+  persist(); renderUser();
+  return i<0;
+}
+const favRecipe = f => f.snap || R.find(x=>x.id===f.id);
+function showFavs(){
+  if(!me) return;
+  const list = prof().fav;
+  $("empty").classList.add("hidden"); $("loading").classList.add("hidden");
+  $("result").innerHTML = `<div class="block"><h3 class="rname">Favorilerin</h3><p class="taste">${list.length ? list.length+" kokteyl. Birine dokun, tarifi hazırlansın." : "Henüz favorin yok. Bir tarifte “Favorilere ekle”ye bas, burada saklansın."}</p></div>
+    <div class="favlist">${list.map(f=>{ const r=favRecipe(f); if(!r) return ""; return `<div class="favrow"><button type="button" class="favitem" data-fav="${esc(f.key)}">${glassSVG(r,0.92,{still:true})}<span><span class="fn">${esc(r.name)}</span><br><span class="ft">${esc(r.taste)} · ${new Date(f.at).toLocaleDateString("tr-TR")}</span></span><span aria-hidden="true">›</span></button><button type="button" class="rm" data-unfav="${esc(f.key)}" aria-label="${esc(r.name)} favorilerden çıkar">×</button></div>`; }).join("")}</div>`;
+  $("result").classList.remove("hidden");
+  $("result").querySelectorAll("[data-fav]").forEach(b=>b.onclick=()=>{ const f=list.find(x=>x.key===b.dataset.fav); const r=favRecipe(f); if(r) brew(r); });
+  $("result").querySelectorAll("[data-unfav]").forEach(b=>b.onclick=()=>{ const p=prof(); p.fav=p.fav.filter(x=>x.key!==b.dataset.unfav); persist(); renderUser(); showFavs(); });
+  if(window.doctaileOpenSheet) window.doctaileOpenSheet();
+}
+$("favbtn").addEventListener("click", ()=>{ lastProgress=null; showFavs(); });
+
+// ---------- Tekrarsız sıra: bu malzemelerle yapılabilenlerin hepsi gösterilmeden aynısı gelmez ----------
+const selKey = () => [...sel].sort().join(",") + ($("mock").checked ? "|alkolsuz" : "");
+function markSeen(id){
+  if(!me) return;
+  const p = prof(), k = selKey(), ids = ranked.full.map(o=>o.r.id);
+  if(!ids.includes(id)) return;
+  let seen = (p.seen[k]||[]).filter(x=>ids.includes(x));
+  if(!seen.includes(id)) seen.push(id);
+  p.seen[k] = seen; delete p.seen[k]; p.seen[k] = seen;   // en son kullanılan anahtar sona
+  const keys = Object.keys(p.seen); if(keys.length>40) keys.slice(0, keys.length-40).forEach(x=>delete p.seen[x]);
+  lastProgress = {n: seen.indexOf(id)+1, total: ids.length, restarted:false};
+  persist();
+}
+function nextFresh(){
+  const p = prof(), k = selKey(), ids = ranked.full.map(o=>o.r.id);
+  let seen = (p.seen[k]||[]).filter(x=>ids.includes(x)), restarted = false;
+  let o = ranked.full.find(x=>!seen.includes(x.r.id));
+  if(!o){ seen = []; restarted = true; o = ranked.full[0]; }
+  p.seen[k] = seen; markSeen(o.r.id); lastProgress.restarted = restarted;
+  return o.r;
 }
 
 // ---------- Malzeme seçimi ----------
@@ -599,7 +735,7 @@ $("cats").addEventListener("click", e=>{
   d.querySelector(".cn").innerHTML = `${n?`<b>${n}</b> / `:""}${c.items.length}`;
   $("cnt").textContent = sel.size; $("make").disabled = sel.size===0; save();
 });
-$("cats").addEventListener("toggle", e=>{ const d=e.target; if(d.tagName!=="DETAILS"||$("q").value.trim()) return; d.open?openCats.add(d.dataset.cat):openCats.delete(d.dataset.cat); }, true);
+$("cats").addEventListener("toggle", e=>{ const d=e.target; if(d.tagName!=="DETAILS"||$("q").value.trim()) return; d.open?openCats.add(d.dataset.cat):openCats.delete(d.dataset.cat); save(); }, true);
 $("q").addEventListener("input", renderCats);
 $("mock").addEventListener("change", save);
 $("clear").addEventListener("click", ()=>{ sel.clear(); renderCats(); save(); });
@@ -739,7 +875,7 @@ function glassSVG(r, fill, opts={}){
 
 // ---------- Akış ----------
 function showEmpty(){
-  $("empty").innerHTML = glassSVG({glass:"coupe",color:"#d8a95b",name:"Boş"},0,{still:true}) + `<p style="font-family:var(--display);font-size:22px;color:var(--text);margin:8px 0 0">Bardak hazır, malzemeler bekleniyor</p><p style="margin:0;max-width:40ch">Soldan elindekileri seç ve Make'e bas. ${TOTAL_ING} malzeme ve ${R.length} tarif var; listede olmayanı aramaya yazıp ekleyebilirsin.</p>`;
+  $("empty").innerHTML = glassSVG({glass:"coupe",color:"#d8a95b",name:"Boş"},0,{still:true}) + `<p style="font-family:var(--display);font-size:22px;color:var(--text);margin:8px 0 0">Bardak hazır, malzemeler bekleniyor</p><p style="margin:0;max-width:40ch">Elindeki malzemeleri seç ve Make'e bas. ${TOTAL_ING} malzeme ve ${R.length} tarif var; listede olmayanı aramaya yazıp ekleyebilirsin.</p>`;
 }
 const STEPS = ["Buz ekleniyor…","Ölçüler jigger'a dökülüyor…","Karıştırılıyor…","Süzülüyor…","Garnitür yerleştiriliyor…"];
 let anim = null;
@@ -781,6 +917,7 @@ function showResult(r){
   const optMiss = (r.opt||[]).filter(([a,k])=>!has(k));
   const optLines = optHave.map(([a,k])=>`<li class="opt"><span class="amt">${esc(a)}</span><span>${esc(lineName(k))} <em style="color:var(--muted)">(isteğe bağlı)</em></span></li>`).join("");
   const others = ranked.full.filter(o=>o.r.id!==r.id).slice(0,10);
+  const prog = lastProgress && ranked.full.some(o=>o.r.id===r.id) ? lastProgress : null;
   const ones = ranked.one.slice(0,8);
   $("result").innerHTML = `
     <div class="res-top">
@@ -797,29 +934,31 @@ function showResult(r){
     <div class="meta"><div><span>Bardak</span>${GLASSNAME[r.glass]}</div><div><span>Garnitür</span>${esc(r.garnish?r.garnish[0]:"—")}</div></div>
     ${r.info?`<div class="note">${esc(r.info)}</div>`:""}
     <p class="src">${srcLine(r.src)}</p>
-    <div class="res-actions">${ranked.full.length>1?'<button class="btn" type="button" id="next">Başka bir tane öner</button>':""}<button class="btn" type="button" id="again">Tekrar hazırla</button></div>
+    ${prog?`<p class="progress">Bu malzemelerle ${prog.total} kokteyl yapılabiliyor · ${prog.n}. öneri${prog.n===prog.total&&prog.total>1?" · hepsini gördün, sıradaki baştan başlar":""}</p>`:""}
+    ${prog&&prog.restarted?`<div class="note">Bu malzemelerle yapılabilecek ${prog.total} kokteylin hepsini gördün; liste baştan başladı.</div>`:""}
+    <div class="res-actions"><button class="btn fav" type="button" id="favtoggle" aria-pressed="${isFav(r)}">${isFav(r)?"♥ Favorilerde":"♡ Favorilere ekle"}</button>${ranked.full.length>1?'<button class="btn" type="button" id="next">Başka bir tane öner</button>':""}<button class="btn" type="button" id="again">Tekrar hazırla</button></div>
     ${others.length||ones.length?`<div class="alts">
       ${others.length?`<div><h4 class="alth">Bunları da yapabilirsin (${ranked.full.length-1})</h4><div class="chips">${others.map(o=>`<button type="button" class="chip" data-r="${o.r.id}">${esc(o.r.name)}</button>`).join("")}</div></div>`:""}
       ${ones.length?`<div><h4 class="alth">Bir malzeme eksik</h4><div class="chips">${ones.map(o=>`<button type="button" class="chip miss" data-r="${o.r.id}">${esc(o.r.name)} · eksik: ${esc(reqLabel(o.missing[0]))}</button>`).join("")}</div></div>`:""}
     </div>`:""}`;
   $("result").classList.remove("hidden");
-  const n=$("next"); if(n) n.onclick=()=>{ cursor=(cursor+1)%ranked.full.length; brew(ranked.full[cursor].r); };
+  const n=$("next"); if(n) n.onclick=()=>brew(nextFresh());
+  $("favtoggle").onclick=e=>{ const on=toggleFav(r); e.currentTarget.setAttribute("aria-pressed",on); e.currentTarget.textContent = on?"♥ Favorilerde":"♡ Favorilere ekle"; };
   $("again").onclick=()=>brew(r);
   $("result").querySelectorAll(".chip[data-r]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.r; const i=ranked.full.findIndex(o=>o.r.id===id);
-    const r2 = i>=0 ? ranked.full[i].r : R.find(x=>x.id===id); if(i>=0) cursor=i; brew(r2);
+    const r2 = i>=0 ? ranked.full[i].r : R.find(x=>x.id===id); if(i>=0) markSeen(id); else lastProgress=null; brew(r2);
   });
 }
 $("make").addEventListener("click", ()=>{
-  ranked = rank(); cursor = 0;
-  const r = ranked.full.length ? ranked.full[0].r : improvise();
+  ranked = rank(); cursor = 0; lastProgress = null;
+  const r = ranked.full.length ? nextFresh() : improvise();
   if(!r){ $("loading").classList.add("hidden"); $("result").classList.add("hidden"); $("empty").classList.remove("hidden"); $("empty").innerHTML = `<p style="font-family:var(--display);font-size:22px;color:var(--text)">Bununla bir içecek çıkmıyor</p><p style="max-width:40ch">En az bir içki ya da bir karıştırıcı (kola, soda, meyve suyu, kahve) seç.</p>`; return; }
   brew(r);
 });
 
-load();
-ING.forEach((c,i)=>{ if(i<2 || c.items.some(([k])=>sel.has(k))) openCats.add(c.cat); });
-renderCats(); showEmpty();
+applyCustom(); renderCats(); showEmpty();
+(function(){ let cur=null; try{ cur=localStorage.getItem(CUR); }catch(e){} if(cur && profiles[cur]) loadProfile(cur); else showLogin(); })();
 $("tagcount").textContent = `${TOTAL_ING} malzeme, ${R.length} tarif.`;
 </script>
 <script>
@@ -871,6 +1010,7 @@ $("tagcount").textContent = `${TOTAL_ING} malzeme, ${R.length} tarif.`;
   // ---- Telefon alt sayfası; geri tuşu sayfayı kapatır ----
   function openSheet(){ if(mode!=="phone") return; root.classList.add("sheet-open"); if(location.hash!=="#tarif") location.hash = "tarif"; }
   function closeSheet(){ root.classList.remove("sheet-open"); }
+  window.doctaileOpenSheet = openSheet;
   addEventListener("hashchange", ()=>{ if(location.hash!=="#tarif") closeSheet(); });
   document.getElementById("closeSheet").addEventListener("click", ()=>{ if(location.hash==="#tarif") history.back(); else closeSheet(); });
   if(location.hash==="#tarif") history.replaceState(null, "", location.pathname);
