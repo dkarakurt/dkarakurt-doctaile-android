@@ -22,6 +22,12 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);   // seçimler ve eklediğin malzemeler saklanır
         s.setAllowFileAccess(true);
+        // İki parmakla yakınlaştırma ve zoom düğmeleri kapalı; sayfa her zaman ekran genişliğinde
+        s.setSupportZoom(false);
+        s.setBuiltInZoomControls(false);
+        s.setDisplayZoomControls(false);
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(true);
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
