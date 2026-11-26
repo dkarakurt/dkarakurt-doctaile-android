@@ -88,6 +88,15 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
 .login .known{display:grid;gap:6px;text-align:left}
 .login .known h3{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin:6px 0 0;font-weight:700}
 .login .fine{font-size:12px}
+.login .agebox{display:flex;gap:10px;align-items:flex-start;text-transform:none;letter-spacing:0;font-weight:400;font-size:14px;color:var(--muted);cursor:pointer}
+.login .agebox b{color:var(--text);font-weight:600}
+.login .agebox input{accent-color:var(--brass);width:20px;height:20px;margin-top:1px;flex:0 0 auto}
+.toggle.locked{opacity:.7;cursor:not-allowed}
+.login .kp{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}
+.login .kdel{border:1px solid var(--line);background:var(--ink);color:var(--muted);border-radius:999px;width:30px;height:30px;cursor:pointer;font-size:15px;line-height:1}
+.login .kdel:hover{color:#f08c7a;border-color:#7a3a30}
+.login .kask{font-size:13px;color:#f0b1a4;width:100%}
+.login [data-yes]{border-color:#7a3a30;color:#f0b1a4}
 .alth{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--brass);margin:0 0 6px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);background:var(--ink);color:var(--text);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
@@ -209,6 +218,9 @@ html.book.vert .main > .panel:first-child{border-radius:0 0 14px 14px;border-rig
 @media (prefers-reduced-motion:reduce){.loading.shaking .glassbox{animation:none}html.phone .stage{transition:none}}
 html.phone .who{flex:0 0 auto;max-width:62vw;align-self:center}
 html.phone .search,html.phone .login input{font-size:16px}
+/* Grid sütunu düğme satırının genişliğine uzamasın: dar telefonlarda yana kayma olmasın */
+html.phone .wrap{grid-template-columns:minmax(0,1fr)}
+html.phone .wrap > *,html.phone header > div{min-width:0}
 </style>
 </head>
 <body>
@@ -220,6 +232,7 @@ html.phone .search,html.phone .login input{font-size:16px}
     <form id="loginForm" novalidate>
       <label for="email">E-posta</label>
       <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="ornek@mail.com" required>
+      <label class="agebox" for="adult"><input type="checkbox" id="adult"> <span><b>18 yaşından büyüğüm.</b> İşaretlemezsen profilin yalnızca alkolsüz tarifleri gösterir.</span></label>
       <div class="err" id="loginErr" role="alert"></div>
       <button class="btn primary" type="submit">Giriş yap</button>
     </form>
@@ -622,14 +635,16 @@ function save(){
   persist();
 }
 function newProfile(){ return {sel:[], custom:[], fav:[], seen:{}, open:[], mock:false, created:Date.now(), last:Date.now()}; }
-function loadProfile(email){
+function loadProfile(email, adult){
   me = email;
-  if(!profiles[me]) profiles[me] = newProfile();   // ilk giriş: hiçbir malzeme seçili değil, tüm gruplar kapalı
+  if(!profiles[me]){ profiles[me] = newProfile(); profiles[me].minor = adult === false; }   // ilk giriş: hiçbir malzeme seçili değil, tüm gruplar kapalı
   const p = prof(); p.fav = p.fav||[]; p.seen = p.seen||{}; p.open = p.open||[];
   custom = (p.custom||[]).filter(x=>x && x.id && x.name && ROLES[x.role]);
   applyCustom();
   sel.clear(); (p.sel||[]).forEach(k=>NAME[k]&&sel.add(k));
-  $("mock").checked = !!p.mock;
+  $("mock").checked = !!p.mock || !!p.minor;
+  $("mock").disabled = !!p.minor;   // 18 yaş altı profil: yalnızca alkolsüz
+  const tg = $("mock").closest("label"); if(tg){ tg.classList.toggle("locked", !!p.minor); tg.lastChild.textContent = p.minor ? " Alkolsüz (18 yaş altı)" : " Sadece alkolsüz"; }
   openCats.clear(); p.open.forEach(c=>openCats.add(c));
   $("q").value = "";
   ranked = {full:[], one:[]}; current = null;
@@ -646,8 +661,8 @@ function showLogin(){
   me = null; persist();
   $("loginGlass").innerHTML = glassSVG({glass:"coupe",color:"#8e3b1c",name:"doctaile",garnish:["","peel"]},0.92,{still:true});
   const known = Object.keys(profiles).sort((a,b)=>(profiles[b].last||0)-(profiles[a].last||0));
-  $("known").innerHTML = known.length ? `<h3>Bu cihazdaki profiller</h3><div class="chips">${known.map(e=>`<button type="button" class="chip" data-email="${esc(e)}">${esc(e)}</button>`).join("")}</div>` : "";
-  $("loginErr").textContent = ""; $("email").value = "";
+  $("known").innerHTML = known.length ? `<h3>Bu cihazdaki profiller</h3><div class="chips">${known.map(e=>`<span class="kp"><button type="button" class="chip" data-email="${esc(e)}">${esc(e)}</button><button type="button" class="kdel" data-del="${esc(e)}" aria-label="${esc(e)} profilini sil">×</button></span>`).join("")}</div><p class="fine" style="margin-top:6px">Bir profili ve tüm verilerini (seçimler, favoriler) silmek için yanındaki ×'e dokun.</p>` : "";
+  $("loginErr").textContent = ""; $("email").value = ""; $("adult").checked = false;
   $("login").classList.remove("hidden");
   setTimeout(()=>{ try{ $("email").focus(); }catch(e){} }, 50);
 }
@@ -655,9 +670,16 @@ $("loginForm").addEventListener("submit", e=>{
   e.preventDefault();
   const v = $("email").value.trim().toLowerCase();
   if(!EMAIL_RE.test(v)){ $("loginErr").textContent = "Geçerli bir e-posta adresi yaz (ör. ad@mail.com)."; return; }
-  loadProfile(v);
+  loadProfile(v, $("adult").checked);
 });
-$("known").addEventListener("click", e=>{ const b=e.target.closest("[data-email]"); if(b) loadProfile(b.dataset.email); });
+$("known").addEventListener("click", e=>{
+  const yes = e.target.closest("[data-yes]");
+  if(yes){ delete profiles[yes.dataset.yes]; persist(); showLogin(); return; }
+  if(e.target.closest("[data-no]")){ showLogin(); return; }
+  const del = e.target.closest("[data-del]");
+  if(del){ const em = del.dataset.del; del.parentElement.innerHTML = `<span class="kask">${esc(em)} ve tüm verileri silinsin mi?</span><button type="button" class="chip" data-yes="${esc(em)}">Sil</button><button type="button" class="chip" data-no="1">Vazgeç</button>`; return; }
+  const b=e.target.closest("[data-email]"); if(b) loadProfile(b.dataset.email);
+});
 $("logout").addEventListener("click", ()=>{ save(); showLogin(); });
 
 // ---------- Favoriler ----------

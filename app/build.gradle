@@ -2,21 +2,39 @@ plugins {
     id 'com.android.application'
 }
 
+// İmza anahtarı GitHub Secrets'tan gelir (bkz. .github/workflows/apk.yml). Anahtar yoksa debug imzasıyla derlenir.
+def keystorePath = System.getenv("DOCTAILE_KEYSTORE")
+def hasReleaseKey = keystorePath != null && new File(keystorePath).exists()
+// Her GitHub derlemesinde artan sürüm kodu (Play her yüklemede daha büyük bir kod ister)
+def runNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "0") as int
+
 android {
     namespace 'com.doctaile.app'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.doctaile.app'
         minSdk 24
-        targetSdk 34
-        versionCode 3
-        versionName '1.2'
+        targetSdk 36
+        versionCode 10 + runNumber
+        versionName '1.3'
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseKey) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("DOCTAILE_STORE_PASSWORD")
+                keyAlias System.getenv("DOCTAILE_KEY_ALIAS")
+                keyPassword System.getenv("DOCTAILE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
         }
     }
 
@@ -25,7 +43,7 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    aaptOptions {
+    androidResources {
         noCompress 'woff2'
     }
 }
